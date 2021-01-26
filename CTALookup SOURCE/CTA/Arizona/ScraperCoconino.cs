@@ -76,14 +76,26 @@ namespace CTALookup.Arizona
             }       
 
             // Simulate guest login
-            parameters = new Dictionary<string, string>() { { "guest", "true" }, { "submit", "Enter EagleWeb" } };
+            parameters = new Dictionary<string, string>() { { "guest", "true" }, { "submit", "Enter+EagleWeb" } };
             par = WebQuery.GetStringFromParameters(parameters);
-            doc = _webQuery.GetPost("http://assessor.coconino.az.gov:82/assessor/web/loginPOST.jsp", par, 1);
+            doc = _webQuery.GetPost("http://assessor.coconino.az.gov:82/assessor/web/loginPOST.jsp?guest=true&submit=Enter+EagleWeb", par, 1);
+            //http://assessor.coconino.az.gov:82/assessor/taxweb/account.jsp?accountNum=R0030888
+            //http://assessor.coconino.az.gov:82/assessor/taxweb/results.jsp
+            //doc = _webQuery.GetPost("http://assessor.coconino.az.gov:82/assessor/web/loginPOST.jsp?guest=true&submit=Enter+EagleWeb", par, 1);
+
+            //ParcelNumberID
+            //http://assessor.coconino.az.gov:82/assessor/taxweb/results.jsp
+             parameters = new Dictionary<string, string>() { { "AccountNumID", accountNumber } };
+            //http://assessor.coconino.az.gov:82/assessor/taxweb/account.jsp?accountNum=R0030888
+            doc = _webQuery.GetSource(string.Format("http://assessor.coconino.az.gov:82/assessor/taxweb/results.jsp?AccountNumID={0}", accountNumber), 1);
 
             // Get assessor page
-            doc = _webQuery.GetSource(string.Format("http://assessor.coconino.az.gov:82/assessor/taxweb/account.jsp?accountNum={0}", accountNumber), 1);
+            //doc = _webQuery.GetSource(string.Format("http://assessor.coconino.az.gov:82/assessor/taxweb/account.jsp?accountNum={0}", accountNumber), 1);
+            //doc = _webQuery.GetSource(string.Format("http://assessor.coconino.az.gov:82/assessor/taxweb/account.jsp?accountNum={0}", accountNumber), 1);
 
             var node = doc.DocumentNode.SelectSingleNode("//td[contains(b/text(), 'Full Cash Value (FCV)')]");
+            if(node!=null)
+            
             item.MarketValue = node.SelectSingleNode("td").InnerText;
             node = doc.DocumentNode.SelectSingleNode("//td/b[contains(text(), 'Owner Address')]");
             var nodes = doc.DocumentNode.SelectNodes("//*[@id='middle']/table/tbody/tr[2]/td[2]");

@@ -8,6 +8,7 @@ using System.Web;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
+using System.Net;
 
 namespace CTALookup.Arizona
 {
@@ -40,6 +41,9 @@ namespace CTALookup.Arizona
                     {"ReturnAction", ""}
                 };
                 var parameters = WebQuery.GetStringFromParameters(dict);
+
+                System.Net.ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12;
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
 
                 doc = _webQuery.GetPost("https://treasurer.pinalcountyaz.gov/ParcelInquiry/Main/ParcelEntry", parameters, 1);
 
@@ -121,12 +125,29 @@ namespace CTALookup.Arizona
 
             //?
 
+
             ChromeOptions option = new ChromeOptions();
-            option.AddArgument("--headless");
+            //option.AddArgument("--headless");
+            option.AddArgument("--start-maximized");
+            option.AddArgument("--ignore-certificate-errors");
+            option.AddArgument("--disable-popup-blocking");
+            option.AddArgument("--incognito");
+
+            String PROXY = "http://lum-customer-hl_389267c6-zone-static:e7ecycprce6a@zproxy.lum-superproxy.io:22225";
+            //options.AddArguments("user-data-dir=path/in/your/system");
+
+            Proxy proxy = new Proxy();
+
+            proxy.HttpProxy = PROXY;
+            proxy.SslProxy = PROXY;
+            proxy.FtpProxy = PROXY;
+
+            option.Proxy = proxy;
 
             var chromeDriverService = ChromeDriverService.CreateDefaultService();
             chromeDriverService.HideCommandPromptWindow = true;
             IWebDriver driver = new ChromeDriver(chromeDriverService, option);
+            
             driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(60);
 
             string[] splitted = parcelNumber.Split('-');

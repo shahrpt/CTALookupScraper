@@ -25,7 +25,11 @@ namespace CTALookup.Arizona {
             parcelNumber = parcelNumber.Replace(" ", "");
             InvokeOpeningSearchPage();
 
-            var doc = _webQuery.GetSource("http://www.to.pima.gov/pcto/tweb/property_inquiry/show/" + parcelNumber.Trim().Replace("-", ""), 1);
+            //https://gis.pima.gov/maps/detail.cfm?parcel=304291600
+            //var doc = _webQuery.GetSource("http://www.to.pima.gov/pcto/tweb/property_inquiry/show/" + parcelNumber.Trim().Replace("-", ""), 1);
+
+            var doc = _webQuery.GetSource("https://gis.pima.gov/maps/detail.cfm?parcel=" + parcelNumber.Trim().Replace("-", ""), 1);
+
             //_webQuery.GetSource("http://www.to.pima.gov/property-information/property-inquiry", 1);
             //var parameters = GetInquiryParams(doc, parcelNumber);
             InvokeSearching();
@@ -50,16 +54,34 @@ namespace CTALookup.Arizona {
             ///Home/FindParcel?ts=1515527922904&parcelNumber=303083720
             ///            string oldContentType = _webQuery.ContentType;
             ChromeOptions option = new ChromeOptions();
+            option.AddArgument("headless");
+
             option.AddArgument("--headless");
 
-            var chromeDriverService = ChromeDriverService.CreateDefaultService();
-            chromeDriverService.HideCommandPromptWindow = true;
-            IWebDriver driver = new ChromeDriver(chromeDriverService, option);
-            driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(60);
+            String PROXY = "http://lum-customer-hl_389267c6-zone-static:e7ecycprce6a@zproxy.lum-superproxy.io:22225";
+            //options.AddArguments("user-data-dir=path/in/your/system");
 
+            Proxy proxy = new Proxy();
 
+            proxy.HttpProxy = PROXY;
+            proxy.SslProxy = PROXY;
+            proxy.FtpProxy = PROXY;
+
+            option.Proxy = proxy;
+
+            option.AcceptInsecureCertificates = true;
+            option.PageLoadStrategy = PageLoadStrategy.Normal;
+
+            //var chromeDriverService = new ChromeDriver(option);
+            IWebDriver driver = new ChromeDriver(option);
+            driver.Manage().Timeouts().PageLoad = TimeSpan.FromSeconds(120);
+
+            
             //Navigate to  page
-            driver.Navigate().GoToUrl("http://www.asr.pima.gov/Home/ParcelSearch");
+            //"http://www.asr.pima.gov/Home/ParcelSearch" old url
+            string newUrl = "https://www.asr.pima.gov/?aspxerrorpath=/Home/ParcelSearch&aspxerrorpath=/Home/ParcelSearch";
+            driver.Navigate().GoToUrl(newUrl);
+            
             //
             IWebElement parcelInput = driver.FindElement(By.Id("parcelInput"));
             //Perform Ops
@@ -129,7 +151,7 @@ namespace CTALookup.Arizona {
             */
             GetAdditionalOwmer(item);
             driver.Quit();
-            chromeDriverService.Dispose();
+            //chromeDriverService.Dispose();
 
             return item;
         }

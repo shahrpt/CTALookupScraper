@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using CTALookup.Scrapers;
 using HtmlAgilityPack;
@@ -28,9 +29,13 @@ namespace CTALookup.Arizona
             string parameters = string.Format("{{ \"theVal\": \"{0}\", \"theMode\": \"nothing\"}}", parcelNumber.Replace("-", ""));
             string oldContentType = _webQuery.ContentType;
             _webQuery.ContentType = "application/json; charset=UTF-8";
+            //_webQuery.ContentType = "application/x-www-form-urlencoded";
             string url;
-              url = "http://apps.yavapai.us/taxinquiry/YCtaxSearch.asmx/parseText";
-            url = "http://gis.yavapai.us/v4/ycparsearch.asmx/parseText";
+
+              //url = "http://apps.yavapai.us/taxinquiry/YCtaxSearch.asmx/parseText";
+            //url = "http://gis.yavapai.us/v4/ycparsearch.asmx/parseText";
+            url = "https://gis.yavapai.us/v4/ycparsearch.asmx/parseText";
+            
             InvokeSearching();
             var doc = _webQuery.GetPost(url, parameters, 1);
             Console.WriteLine( format_json(doc.DocumentNode.OuterHtml));
@@ -46,7 +51,7 @@ namespace CTALookup.Arizona
             _webQuery.ContentType = "application/json; charset=UTF-8";
             parameters = string.Format("{{ \"theVal\": \"{0}\", \"theMode\": \"nothing\"}}", parcelNumber);
             //           doc = _webQuery.GetPost("http://apps.yavapai.us/taxinquiry/YCtaxSearch.asmx/parseText", parameters, 1);
-             url = "http://gis.yavapai.us/v4/ycparsearch.asmx/parseText";
+             url = "https://gis.yavapai.us/v4/ycparsearch.asmx/parseText";
            // url = "http://apps.yavapai.us/taxinquiry/YCtaxSearch.asmx/parseText";
             doc = _webQuery.GetPost(url, parameters, 1);
             _webQuery.ContentType = oldContentType;
