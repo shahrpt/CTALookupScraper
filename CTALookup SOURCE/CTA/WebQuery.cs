@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Web;
 using HtmlAgilityPack;
 
@@ -37,9 +40,12 @@ namespace CTALookup
         }
 
         public HtmlDocument GetPost(string url, string parameters, int retries, string referer = null, bool xmlHttpRequest = false) {
-            using ( var reader = new StreamReader(GetStream(url, retries, true, parameters, referer, xmlHttpRequest))) {
+            //using ( var reader = new StreamReader(GetStream(url, retries, true, parameters, referer, xmlHttpRequest))) {
+            using (var reader = new StreamReader(GetStream(url, retries, true, parameters, referer, xmlHttpRequest)))
+            {
                 string code = reader.ReadToEnd();
                 var doc = new HtmlDocument();
+                
                 doc.LoadHtml(code);
                 return doc;
             }
@@ -54,6 +60,17 @@ namespace CTALookup
             string dataBoundary = String.Format("----------{0:N}", Guid.NewGuid());
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            WebProxy webProxy = new WebProxy("http://zproxy.lum-superproxy.io:22225", true)
+            {
+                Credentials = new NetworkCredential("lum-customer-hl_389267c6-zone-static", "e7ecycprce6a", "lumtest.com/myip.json"),
+                UseDefaultCredentials = false
+            };
+
+            request.Proxy = webProxy;
+            request.Proxy.Credentials = new NetworkCredential("lum-customer-hl_389267c6-zone-static", "e7ecycprce6a");
+
+            request.Credentials = new NetworkCredential("lum-customer-hl_389267c6-zone-static", "e7ecycprce6a");
+
             request.Method = "POST";
             request.Timeout = Timeout;
             request.AllowAutoRedirect = AllowAutoRedirect;
@@ -62,6 +79,7 @@ namespace CTALookup
             request.Accept = Accept;
             request.ContentType = ContentType;
             request.CookieContainer = _cookies;
+
             request.KeepAlive = false;
             request.ContentType = "multipart/form-data; boundary=" + dataBoundary;
             if (Proxy != null)
@@ -122,13 +140,147 @@ namespace CTALookup
             return formData;
         }
 
+        public Stream Invoke(string url, int retries, bool post = false, string postParameters = null, string referer = null, bool xmlHttpRequest = false)
+            //(string Method, string Uri, string Body)
+        {
+            System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Ssl3;
+            var proxy = new WebProxy
+            {
+                Address = new Uri($"http://{"zproxy.lum-superproxy.io"}:{"22225"}"),
+                BypassProxyOnLocal = false,
+                UseDefaultCredentials = false,
+
+                // *** These creds are given to the proxy server, not the web server ***
+                Credentials = new NetworkCredential(
+                            userName: "lum-customer-hl_389267c6-zone-static",
+                            password: "e7ecycprce6a")
+            };
+            // Now create a client handler which uses that proxy
+            var httpClientHandler = new HttpClientHandler
+            {
+                Proxy = proxy,
+            };
+
+            // Omit this part if you don't need to authenticate with the web server:
+            //if (needServerAuthentication)
+            {
+                httpClientHandler.PreAuthenticate = true;
+                httpClientHandler.UseDefaultCredentials = false;
+                httpClientHandler.AllowAutoRedirect = true;
+                httpClientHandler.CookieContainer = _cookies;
+
+                // *** These creds are given to the web server, not the proxy server ***
+                httpClientHandler.Credentials = new NetworkCredential(
+                    userName: "lum-customer-hl_389267c6-zone-static",
+                    password: "e7ecycprce6a");
+            }
+            //httpClient = new HttpClient(handler: httpClientHandler, disposeHandler: true);
+            //httpClientHandler.ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => { return true; };
+
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            var cl = new HttpClient(handler: httpClientHandler, disposeHandler: true);
+            cl.BaseAddress = new Uri(url);
+            cl.Timeout = TimeSpan.FromMilliseconds(Timeout);
+            int _TimeoutSec = 90;
+            cl.Timeout = new TimeSpan(0, 0, _TimeoutSec);
+            //string _ContentType = "application/json";
+            //cl.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(_ContentType));
+
+            //var _UserAgent = "d-fens HttpClient";
+            // You can actually also set the User-Agent via a built-in property
+            cl.DefaultRequestHeaders.Add("User-Agent", UserAgent);
+            // You get the following exception when trying to set the "Content-Type" header like this:
+            // cl.DefaultRequestHeaders.Add("Content-Type", _ContentType);
+            // "Misused header name. Make sure request headers are used with HttpRequestMessage, response headers with HttpResponseMessage, and content headers with HttpContent objects."
+            HttpResponseMessage response;
+            try
+            {
+               
+            string Method = "Get";
+            if (post)
+                Method = "POST";
+            var _Method = new HttpMethod(Method);
+            ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, errors) =>
+            {
+                
+                if (true) return true;
+                
+            };
+
+           
+                switch (_Method.ToString().ToUpper())
+                {
+                    case "GET":
+                    case "HEAD":
+                        Console.WriteLine(cl.ToString());
+                        // synchronous request without the need for .ContinueWith() or await
+                        response = cl.GetAsync(url).Result;
+                        break;
+                    case "POST":
+                        {
+                            // Construct an HttpContent from a StringContent
+                            HttpContent _Body = new StringContent(postParameters);
+                            // and add the header to this object instance
+                            // optional: add a formatter option to it as well
+                            _Body.Headers.ContentType = new MediaTypeHeaderValue(ContentType);
+                            // synchronous request without the need for .ContinueWith() or await
+                            response = cl.PostAsync(url, _Body).Result;
+                        }
+                        break;
+                    case "PUT":
+                        {
+                            // Construct an HttpContent from a StringContent
+                            HttpContent _Body = new StringContent(postParameters);
+                            // and add the header to this object instance
+                            // optional: add a formatter option to it as well
+                            _Body.Headers.ContentType = new MediaTypeHeaderValue(ContentType);
+                            // synchronous request without the need for .ContinueWith() or await
+                            response = cl.PutAsync(url, _Body).Result;
+                        }
+                        break;
+                    case "DELETE":
+                        response = cl.DeleteAsync(url).Result;
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
+            
+            // either this - or check the status to retrieve more information
+            response.EnsureSuccessStatusCode();
+            // get the rest/content of the response in a synchronous way
+            var content = response.Content.ReadAsStringAsync().Result;
+
+            return response.Content.ReadAsStreamAsync().Result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return null;
+            }
+        }
         private Stream GetStream(string url, int retries, bool post = false, string postParameters = null, string referer = null, bool xmlHttpRequest = false) {
             for (int i = 0; i < retries; i++)
             {
                 if (Delay > 0) {
                     Thread.Sleep(Delay);
                 }
+                System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls | SecurityProtocolType.Ssl3;
+                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+                
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+
+                WebProxy webProxy = new WebProxy("http://zproxy.lum-superproxy.io:22225", true)
+                {
+                    Credentials = new NetworkCredential("lum-customer-hl_389267c6-zone-static", "e7ecycprce6a", "lumtest.com/myip.json"),
+                    UseDefaultCredentials = false
+                };
+
+                request.Proxy = webProxy;
+                request.Proxy.Credentials = new NetworkCredential("lum-customer-hl_389267c6-zone-static", "e7ecycprce6a");
+
+                request.Credentials = new NetworkCredential("lum-customer-hl_389267c6-zone-static", "e7ecycprce6a");
                 request.Method = post ? "POST" : "GET";
                 request.Timeout = Timeout;
                 request.AllowAutoRedirect = AllowAutoRedirect;
@@ -138,11 +290,14 @@ namespace CTALookup
                 request.ContentType = ContentType;
                 request.CookieContainer = _cookies;
                 request.KeepAlive = false;
+                /*request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; " +
+                                  "Windows NT 5.2; .NET CLR 1.0.3705;)";*/
                 if (xmlHttpRequest)
                 {
                     request.Headers.Add("X-Requested-With", "XMLHttpRequest");
                     request.Headers.Add("X-Prototype-Version", "1.7");
                     request.Headers.Add("X-MicrosoftAjax", "Delta=true");
+                    
                 }
                 if (Proxy != null)
                 {
@@ -179,7 +334,6 @@ namespace CTALookup
             }
             throw new Exception("?");
         }
-
         public HtmlDocument GetSource(string url, int retries, string referer = null)
         {
             Logger.Log($"Scrape url:{url}");
